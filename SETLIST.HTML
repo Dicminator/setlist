@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Repertório Musical</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+    body {
+        background: #111;
+        color: #eee;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+    }
+
+    h1, h2 {
+        text-align: center;
+    }
+
+    .container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    /* TELAS */
+    .tela {
+        display: none;
+    }
+
+    /* Lista de músicas */
+    .musica {
+        background: #222;
+        padding: 12px;
+        margin: 8px 0;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: .2s;
+    }
+    .musica:hover {
+        background: #333;
+    }
+
+    .subtitulo {
+        font-size: 0.9rem;
+        color: #bbb;
+    }
+
+    /* Botões */
+    button {
+        padding: 8px 14px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    .btn-primario {
+        background: #3fa9f5;
+        color: #111;
+    }
+
+    .btn-secundario {
+        background: #444;
+        color: #eee;
+    }
+
+    .btn-texto {
+        background: transparent;
+        color: #3fa9f5;
+        padding: 4px 0;
+    }
+
+    button:hover {
+        filter: brightness(1.1);
+    }
+
+    .botoes-linha {
+        display: flex;
+        gap: 8px;
+        margin: 16px 0;
+    }
+
+    /* Visualização da letra */
+    #textoLetraView {
+        margin-top: 12px;
+        white-space: pre-wrap;
+        line-height: 1.6;
+        text-align: left;
+    }
+
+    /* Edição */
+    label {
+        display: block;
+        margin-top: 12px;
+        margin-bottom: 4px;
+        font-size: 0.9rem;
+        color: #ccc;
+    }
+
+    input[type="text"] {
+        width: 100%;
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #444;
+        box-sizing: border-box;
+        background: #222;
+        color: #eee;
+    }
+
+    textarea {
+        width: 100%;
+        min-height: 320px;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #444;
+        box-sizing: border-box;
+        background: #181818;
+        color: #eee;
+        resize: vertical;
+        line-height: 1.5;
+        font-family: inherit;
+    }
+
+    .toolbar {
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+    }
+
+    .toolbar button {
+        padding: 4px 10px;
+        border-radius: 4px;
+        border: 1px solid #555;
+        background: #222;
+    }
+
+    #fontSizeDisplay {
+        min-width: 44px;
+        text-align: center;
+        font-weight: bold;
+    }
+
+    .link-voltar {
+        cursor: pointer;
+        color: #3fa9f5;
+        margin-bottom: 16px;
+        display: inline-block;
+    }
+    .link-voltar:hover {
+        text-decoration: underline;
+    }
+
+    #btnFullscreen {
+        background: #555;
+    }
+
+    #btnFullscreen:hover {
+        background: #666;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+
+    <h1>Repertório Musical</h1>
+
+    <!-- TELA 1 – REPERTÓRIO -->
+    <div id="telaLista" class="tela">
+        <p class="subtitulo" style="text-align:center;">
+            Toque em uma música para ver a letra.
+        </p>
+        <div id="listaMusicas"></div>
+    </div>
+
+    <!-- TELA 2 – VISUALIZAÇÃO -->
+    <div id="telaVisualizar" class="tela">
+        <span class="link-voltar" onclick="voltarParaLista()">← Voltar para o repertório</span>
+
+        <h2 id="tituloMusicaView"></h2>
+        <p id="artistaView" class="subtitulo"></p>
+
+        <div id="textoLetraView"></div>
+
+        <div class="botoes-linha">
+            <button class="btn-secundario" onclick="abrirEdicao()">Alterar</button>
+            <button class="btn-secundario" onclick="alternarTelaCheia()" id="btnFullscreen">
+                Tela Cheia
+            </button>
+        </div>
+    </div>
+
+    <!-- TELA 3 – MANUTENÇÃO / EDIÇÃO -->
+    <div id="telaEditar" class="tela">
+        <span class="link-voltar" onclick="voltarParaVisualizacao()">← Voltar para visualização</span>
+
+        <h2>Editar Música</h2>
+
+        <label for="inputTitulo">Título</label>
+        <input id="inputTitulo" type="text" placeholder="Digite o título da música">
+
+        <label for="inputArtista">Artista / Banda (opcional)</label>
+        <input id="inputArtista" type="text" placeholder="Digite o nome do artista/banda">
+
+        <div class="toolbar">
+            <span>Tamanho da fonte:</span>
+            <button type="button" onclick="diminuirFonte()">A-</button>
+            <span id="fontSizeDisplay">18px</span>
+            <button type="button" onclick="aumentarFonte()">A+</button>
+        </div>
+
+        <label for="textareaLetra">Letra</label>
+        <textarea id="textareaLetra"></textarea>
+
+        <div class="botoes-linha">
+            <button class="btn-primario" onclick="salvarAlteracoes()">Salvar</button>
+            <button class="btn-secundario" onclick="voltarParaVisualizacao()">Cancelar</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // ======== DADOS INICIAIS DO REPERTÓRIO ========
+
+    const defaultSongs = [
+        {
+            id: 1,
+            title: "Nome da Música 1",
+            artist: "Artista / Banda 1",
+            lyrics: `Letra completa da música 1
+Linha 1
+Linha 2
+Linha 3...`,
+            fontSize: 18
+        },
+        {
+            id: 2,
+            title: "Nome da Música 2",
+            artist: "Artista / Banda 2",
+            lyrics: `Letra da Música 2
+Coloque aqui tudo normalmente.
+As quebras de linha serão mantidas.`,
+            fontSize: 18
+        },
+        {
+            id: 3,
+            title: "Nome da Música 3",
+            artist: "Artista / Banda 3",
+            lyrics: `Letra da Música 3
+Copie e cole normalmente.`,
+            fontSize: 18
+        }
+    ];
+
+    const STORAGE_KEY = "repertorioMusical_v1";
+
+    let songs = [];
+    let currentSongId = null;
+    let fontSizeEdicao = 18;
+
+    // ======== FUNÇÕES DE PERSISTÊNCIA ========
+
+    function carregarSongs() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            try {
+                songs = JSON.parse(saved);
+                return;
+            } catch (e) {
+                console.warn("Erro ao ler localStorage, usando padrão.", e);
+            }
+        }
+        songs = defaultSongs;
+    }
+
+    function salvarSongs() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(songs));
+    }
+
+    // ======== TELA CHEIA (ESCONDENDO TÍTULO E ARTISTA) ========
+
+    function alternarTelaCheia() {
+        const elem = document.documentElement; // página inteira
+
+        const titulo = document.getElementById("tituloMusicaView");
+        const artista = document.getElementById("artistaView");
+        const botao = document.getElementById("btnFullscreen");
+
+        if (!document.fullscreenElement) {
+            // === ENTRAR EM TELA CHEIA ===
+            elem.requestFullscreen().then(() => {
+                titulo.style.display = "none";
+                artista.style.display = "none";
+                botao.textContent = "Sair da Tela Cheia";
+            }).catch(err => {
+                console.warn("Erro ao entrar em tela cheia:", err);
+            });
+        } else {
+            // === SAIR DE TELA CHEIA ===
+            document.exitFullscreen().then(() => {
+                titulo.style.display = "block";
+                artista.style.display = "block";
+                botao.textContent = "Tela Cheia";
+            }).catch(err => {
+                console.warn("Erro ao sair de tela cheia:", err);
+            });
+        }
+    }
+
+    // Garante que, se o usuário sair da tela cheia por gesto/tecla, tudo volte ao normal
+    document.addEventListener("fullscreenchange", () => {
+        const titulo = document.getElementById("tituloMusicaView");
+        const artista = document.getElementById("artistaView");
+        const botao = document.getElementById("btnFullscreen");
+
+        if (!titulo || !artista || !botao) return;
+
+        if (!document.fullscreenElement) {
+            // Voltou ao modo normal
+            titulo.style.display = "block";
+            artista.style.display = "block";
+            botao.textContent = "Tela Cheia";
+        } else {
+            // Entrou em fullscreen (caso seja disparado por outro caminho)
+            titulo.style.display = "none";
+            artista.style.display = "none";
+            botao.textContent = "Sair da Tela Cheia";
+        }
+    });
+
+    // ======== CONTROLE DE TELAS ========
+
+    function mostrarTela(idTela) {
+        document.getElementById("telaLista").style.display = "none";
+        document.getElementById("telaVisualizar").style.display = "none";
+        document.getElementById("telaEditar").style.display = "none";
+
+        document.getElementById(idTela).style.display = "block";
+    }
+
+    function voltarParaLista() {
+        currentSongId = null;
+        mostrarTela("telaLista");
+    }
+
+    function voltarParaVisualizacao() {
+        // apenas reabre a visualização atual
+        if (currentSongId != null) {
+            abrirVisualizacao(currentSongId);
+        } else {
+            mostrarTela("telaLista");
+        }
+    }
+
+    // ======== RENDERIZAÇÃO DA LISTA ========
+
+    function renderizarLista() {
+        const lista = document.getElementById("listaMusicas");
+        lista.innerHTML = "";
+
+        songs.forEach(song => {
+            const div = document.createElement("div");
+            div.className = "musica";
+            div.onclick = () => abrirVisualizacao(song.id);
+
+            const titulo = document.createElement("div");
+            titulo.textContent = song.title;
+
+            const subtitulo = document.createElement("div");
+            subtitulo.className = "subtitulo";
+            subtitulo.textContent = song.artist || "";
+
+            div.appendChild(titulo);
+            if (song.artist) div.appendChild(subtitulo);
+
+            lista.appendChild(div);
+        });
+    }
+
+    // ======== TELA 2 – VISUALIZAÇÃO ========
+
+    function abrirVisualizacao(id) {
+        currentSongId = id;
+        const song = songs.find(s => s.id === id);
+        if (!song) return;
+
+        document.getElementById("tituloMusicaView").textContent = song.title;
+        document.getElementById("artistaView").textContent = song.artist || "";
+        const texto = document.getElementById("textoLetraView");
+        texto.textContent = song.lyrics;
+        texto.style.fontSize = (song.fontSize || 18) + "px";
+
+        mostrarTela("telaVisualizar");
+    }
+
+    // ======== TELA 3 – EDIÇÃO ========
+
+    function abrirEdicao() {
+        if (currentSongId == null) return;
+        const song = songs.find(s => s.id === currentSongId);
+        if (!song) return;
+
+        document.getElementById("inputTitulo").value = song.title;
+        document.getElementById("inputArtista").value = song.artist || "";
+        document.getElementById("textareaLetra").value = song.lyrics;
+
+        fontSizeEdicao = song.fontSize || 18;
+        aplicarFonteEdicao();
+
+        mostrarTela("telaEditar");
+    }
+
+    function aplicarFonteEdicao() {
+        const textarea = document.getElementById("textareaLetra");
+        textarea.style.fontSize = fontSizeEdicao + "px";
+        document.getElementById("fontSizeDisplay").textContent = fontSizeEdicao + "px";
+    }
+
+    function aumentarFonte() {
+        if (fontSizeEdicao < 40) {
+            fontSizeEdicao += 2;
+            aplicarFonteEdicao();
+        }
+    }
+
+    function diminuirFonte() {
+        if (fontSizeEdicao > 10) {
+            fontSizeEdicao -= 2;
+            aplicarFonteEdicao();
+        }
+    }
+
+    function salvarAlteracoes() {
+        if (currentSongId == null) return;
+        const song = songs.find(s => s.id === currentSongId);
+        if (!song) return;
+
+        song.title = document.getElementById("inputTitulo").value || "Sem título";
+        song.artist = document.getElementById("inputArtista").value || "";
+        song.lyrics = document.getElementById("textareaLetra").value;
+        song.fontSize = fontSizeEdicao;
+
+        salvarSongs();
+        renderizarLista();
+        abrirVisualizacao(currentSongId); // volta para tela 2 já com o novo conteúdo
+        alert("Alterações salvas.");
+    }
+
+    // ======== INICIALIZAÇÃO ========
+
+    carregarSongs();
+    renderizarLista();
+    mostrarTela("telaLista");
+</script>
+</body>
+</html>

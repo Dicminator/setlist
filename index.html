@@ -159,6 +159,17 @@
     #btnFullscreen:hover {
         background: #666;
     }
+
+    /* Modo "tela cheia" / apresentação (fallback CSS) */
+    body.fullscreen-lyrics {
+        padding: 0;
+    }
+
+    body.fullscreen-lyrics .container {
+        max-width: 100%;
+        margin: 0;
+        padding: 16px;
+    }
 </style>
 </head>
 <body>
@@ -279,55 +290,73 @@ Copie e cole normalmente.`,
         localStorage.setItem(STORAGE_KEY, JSON.stringify(songs));
     }
 
-    // ======== TELA CHEIA (ESCONDENDO TÍTULO E ARTISTA) ========
+    // ======== AJUDA: ESTADO DE FULLSCREEN ========
 
-    function alternarTelaCheia() {
-        const elem = document.documentElement; // página inteira
-
-        const titulo = document.getElementById("tituloMusicaView");
-        const artista = document.getElementById("artistaView");
-        const botao = document.getElementById("btnFullscreen");
-
-        if (!document.fullscreenElement) {
-            // === ENTRAR EM TELA CHEIA ===
-            elem.requestFullscreen().then(() => {
-                titulo.style.display = "none";
-                artista.style.display = "none";
-                botao.textContent = "Sair da Tela Cheia";
-            }).catch(err => {
-                console.warn("Erro ao entrar em tela cheia:", err);
-            });
-        } else {
-            // === SAIR DE TELA CHEIA ===
-            document.exitFullscreen().then(() => {
-                titulo.style.display = "block";
-                artista.style.display = "block";
-                botao.textContent = "Tela Cheia";
-            }).catch(err => {
-                console.warn("Erro ao sair de tela cheia:", err);
-            });
-        }
+    function isFullscreenActive() {
+        return !!(
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.msFullscreenElement
+        );
     }
 
-    // Garante que, se o usuário sair da tela cheia por gesto/tecla, tudo volte ao normal
-    document.addEventListener("fullscreenchange", () => {
+    function updateFullscreenUI(active) {
         const titulo = document.getElementById("tituloMusicaView");
         const artista = document.getElementById("artistaView");
         const botao = document.getElementById("btnFullscreen");
 
         if (!titulo || !artista || !botao) return;
 
-        if (!document.fullscreenElement) {
-            // Voltou ao modo normal
-            titulo.style.display = "block";
-            artista.style.display = "block";
-            botao.textContent = "Tela Cheia";
-        } else {
-            // Entrou em fullscreen (caso seja disparado por outro caminho)
+        if (active) {
             titulo.style.display = "none";
             artista.style.display = "none";
             botao.textContent = "Sair da Tela Cheia";
+            document.body.classList.add("fullscreen-lyrics");
+        } else {
+            titulo.style.display = "block";
+            artista.style.display = "block";
+            botao.textContent = "Tela Cheia";
+            document.body.classList.remove("fullscreen-lyrics");
         }
+    }
+
+    function alternarTelaCheia() {
+        const currentlyFs = isFullscreenActive();
+
+        if (!currentlyFs) {
+            const elem = document.documentElement;
+
+            // Tenta o fullscreen nativo (Chrome, Safari novos, etc)
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+
+            // Mesmo que o fullscreen nativo não funcione (Safari antigo),
+            // ativamos o modo "apresentação" via CSS:
+            updateFullscreenUI(true);
+        } else {
+            // Sair de fullscreen
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+
+            updateFullscreenUI(false);
+        }
+    }
+
+    // Sincroniza UI quando o navegador entra/sai de fullscreen nativo
+    ["fullscreenchange", "webkitfullscreenchange", "MSFullscreenChange"].forEach(eventName => {
+        document.addEventListener(eventName, () => {
+            updateFullscreenUI(isFullscreenActive());
+        });
     });
 
     // ======== CONTROLE DE TELAS ========
@@ -392,6 +421,7 @@ Copie e cole normalmente.`,
         texto.textContent = song.lyrics;
         texto.style.fontSize = (song.fontSize || 18) + "px";
 
+        updateFullscreenUI(false); // garante que não fique preso em modo apresentação
         mostrarTela("telaVisualizar");
     }
 
